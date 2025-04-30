@@ -1,36 +1,49 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import {io} from 'socket.io-client';
+import './App.css';
 
 function App() {
-  const [senderMessage, setSenderMessage] = useState('');
-  const [receiverMessage, setReceiverMessage] = useState('');
+  const [messages, setMessages] = useState([]);
+
+  const socket = useRef(null);
 
   useEffect(() => {
-    // Fetch data from backend API
-    fetch('http://localhost:5000/api/hello')
-    .then(response=>response.json())
-    .then(data => {
-      // Update the state with the message from the backend
-      setReceiverMessage(data.message);
-    })
-  }, [senderMessage]);
+    socket.current = io('http://localhost:5000'); // Connect to the server
+
+    socket.current.on('connect', () => {
+      console.log('Connected to server');
+    });
+
+    socket.current.on('receive_message', (message) => {
+      setMessages((prevMessages) => [...prevMessages, message]);
+    });
+
+    return () => {
+      socket.current.disconnect();
+    };
+  }, []);
+  // Function to handle message submission
+  
 
   const displayMessage = (e) => {
     e.preventDefault();
     const input = document.getElementById('message-input');
-    const newMessage = input.value;
-    console.log(newMessage)
-    setSenderMessage(newMessage);
-    input.value = '';
-  }
+    const message = input.value.trim();
+    if (message) {
+      socket.current.emit('send_message', message);
+      input.value = '';
+    }
+  };
 
   return (
     <div>
       <h1>Vite + React + Node.js chat</h1>
       <div id="chat-window">
-        <ul>
-          <li>{receiverMessage}</li>
-          <li>{senderMessage}</li>
-        </ul>
+      <ul id="chat-messages">
+  {messages.map((msg, index) => (
+    <li key={index}>{msg}</li>
+  ))}
+</ul>
       </div>
       <form onSubmit={displayMessage}>
       <input type="text" id="message-input" placeholder="Type your message here..."/>
