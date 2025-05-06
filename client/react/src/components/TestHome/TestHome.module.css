@@ -1,0 +1,90 @@
+.chatApp {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width:100vw;
+  font-family: 'Segoe UI', sans-serif;
+  background-color: #f0f2f5;
+}
+
+.chatHeader {
+  background-color: #3f51b5;
+  color: white;
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chatBody {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.chatSidebar {
+  width: 280px;
+  background-color: #ffffff;
+  border-right: 1px solid #ccc;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.usersSection,
+.roomsSection {
+  margin-bottom: 2rem;
+}
+
+.userList,
+.roomList {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.userList li,
+.roomList li {
+  padding: 0.5rem;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: background-color 0.2s;
+}
+
+.userList li:hover,
+.roomList li:hover {
+  background-color: #f1f1f1;
+}
+
+.roomInput {
+  width: 100%;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.createRoomButton {
+  margin-top: 0.5rem;
+  width: 100%;
+  padding: 0.5rem;
+  background-color: #3f51b5;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.createRoomButton:hover {
+  background-color: #303f9f;
+}
+
+.chatMain {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #eaeff3;
+  padding: 1rem;
+  overflow-y: auto;
+}
