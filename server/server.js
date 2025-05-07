@@ -149,6 +149,16 @@ const initializeServerandDb = async () => {
     console.log(`User disconnected: ${socket.id}`);
     await db.run("DELETE FROM sockets WHERE socket_id = ?", [socket.id]);
   });
+
+  socket.on("typing", (typingStatusObject, isCurrentRoomGroup)=>{
+    const {typingStatus, chatRoomId}=typingStatusObject
+    console.log(typingStatus)
+    if (isCurrentRoomGroup) {
+      socket.broadcast.to(chatRoomId).emit('client-typing', typingStatusObject);
+    } else {
+      socket.to(chatRoomId).emit('client-typing', typingStatusObject);
+    }
+  })
 });
   
 
@@ -224,7 +234,8 @@ app.post('/register', async (req, res) => {
     try {
         const users= await db.all('SELECT * FROM users');
         const publicChatRooms = await db.all('SELECT * FROM chats where is_group = true');
-        res.status(200).json({users, loggedInUserId: userId, publicChatRooms});
+        const onlineUsers = await db.all('select * from sockets inner join users on sockets.user_id=users.id');
+        res.status(200).json({users, loggedInUserId: userId, publicChatRooms, onlineUsers});
       } catch (error) {
       console.error(error);
       res.status(500).json({ error: 'Internal server error' });

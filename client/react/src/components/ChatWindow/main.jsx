@@ -1,85 +1,104 @@
-import { useEffect, useState, useRef } from 'react'
-import socket from '../Socket/socket'
-import styles from './ChatWindow.module.css'
-import Cookies from 'js-cookie'
+import { useEffect, useState, useRef } from 'react';
+import socket from '../Socket/socket';
+import styles from './ChatWindow.module.css';
+import Cookies from 'js-cookie';
 
 const ChatWindow = (props) => {
-  const {currentChatRoomId, currentChatRoomName, loggedInUserId, isCurrentRoomGroup}=props
-  const [messages, setMessages] = useState([])
-  const [inputMessage, setInputMessage] = useState('')
-  const messagesEndRef = useRef(null)
+  const { currentChatRoomId, currentChatRoomName, loggedInUserId, isCurrentRoomGroup } = props;
+  const [messages, setMessages] = useState([]);
+  const inputMessageRef = useRef(''); // Use ref instead of state for inputMessage
+  const messagesEndRef = useRef(null);
 
   useEffect(() => {
     if (currentChatRoomId) {
-      (async function() {
-        const token = Cookies.get('jwt_token')
-        console.log(currentChatRoomId)
-        const messagesUrl = `http://localhost:5000/get-messages?room=${currentChatRoomId}`
+      (async function () {
+        const token = Cookies.get('jwt_token');
+        const messagesUrl = `http://localhost:5000/get-messages?room=${currentChatRoomId}`;
         const options = {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${token}`,
-          }
-        }
-        const response = await fetch(messagesUrl, options)
-        const data = await response.json()
-        const {chatRoomMessages}=data
-        const fetchedMessages = handleFetchedMessages(chatRoomMessages)
-        console.log(fetchedMessages)
-        setMessages(fetchedMessages)
-      })()
-      
-      socket.emit('join-room', currentChatRoomId)
+            Authorization: `Bearer ${token}`,
+          },
+        };
+        const response = await fetch(messagesUrl, options);
+        const data = await response.json();
+        const { chatRoomMessages } = data;
+        const fetchedMessages = handleFetchedMessages(chatRoomMessages);
+        setMessages(fetchedMessages);
+      })();
+
+      socket.emit('join-room', currentChatRoomId);
       socket.on('receive-message', (message) => {
-        setMessages((prev) => [...prev, message])
-      })
-      
+        setMessages((prev) => [...prev, message]);
+      });
+      socket.on('client-typing', handleClientTyping);
     }
 
     return () => {
-      socket.off('receive-message')
+      socket.off('receive-message');
+      socket.off('client-typing', handleClientTyping);
+    };
+  }, [currentChatRoomId]);
+
+  const handleClientTyping = (typingStatusObject) => {
+    const { typingStatus } = typingStatusObject;
+    const typingIndicatorEl = document.getElementById('typing-indicator');
+    if (typingIndicatorEl) {
+      typingIndicatorEl.style.display = typingStatus ? 'block' : 'none';
     }
-  }, [currentChatRoomId])
+  };
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+  }, [messages]);
 
   const handleSendMessage = () => {
-    console.log(inputMessage)
-    if (inputMessage.trim() && currentChatRoomId) {
+    const inputMessage = inputMessageRef.current.value.trim(); // Access the value from the ref
+    if (inputMessage && currentChatRoomId) {
       const message = {
         senderId: loggedInUserId,
         chatRoomId: currentChatRoomId,
         messageText: inputMessage,
-        timestamp: new Date().toISOString(), 
-      }
-      socket.emit('send-message', message, isCurrentRoomGroup)
-      setMessages((prev) => [...prev, message])
-      setInputMessage('')
+        timestamp: new Date().toISOString(),
+      };
+      socket.emit('send-message', message, isCurrentRoomGroup);
+      setMessages((prev) => [...prev, message]);
+      inputMessageRef.current.value = ''; // Clear the input field
     }
-  }
+  };
 
-  const handleFetchedMessages = (messages)=>
-    messages.map(messageData=>({
+  const handleFetchedMessages = (messages) =>
+    messages.map((messageData) => ({
       senderId: messageData.sender_id,
-        chatRoomId: messageData.chat_id,
-        messageText: messageData.chat_message,
-        timestamp: messageData.timestamp, 
-    }))
+      chatRoomId: messageData.chat_id,
+      messageText: messageData.chat_message,
+      timestamp: messageData.timestamp,
+    }));
 
-  const MessageList = () => {
-    console.log(messages)
-    const messageLength = messages.length
-    return messageLength===0 ? (<div>
-      <p>Start Chatting!</p>
-    </div>) : <div className={styles.messageList} ref={messagesEndRef}>
+  const emitTypingStatus = (status) => {
+    const typingStatusObject = {
+      senderId: loggedInUserId,
+      typingStatus: status,
+      chatRoomId: currentChatRoomId,
+    };
+    socket.emit('typing', typingStatusObject, isCurrentRoomGroup);
+  };
+
+  return (
+    <div className={styles.chatContainer}>
+      <h2 className={styles.roomTitle}>
+        {currentChatRoomName || 'Select a chat room'}<span id="typing-indicator" style={{ display: 'none', fontSize: '14px', fontWeight: '400' }}>
+          {isCurrentRoomGroup ? 'someone is typing...' : 'is typing...'}
+        </span>
+      </h2>
+      <div className={styles.messageList}>
         {messages.map((msg, index) => (
           <div
             key={index}
             className={`${styles.messageItem} ${
               msg.senderId === loggedInUserId ? styles.sent : styles.received
             }`}
+            ref={messagesEndRef}
           >
             <div className={styles.messageBubble}>
               <div className={styles.messageText}>{msg.messageText}</div>
@@ -89,33 +108,24 @@ const ChatWindow = (props) => {
             </div>
           </div>
         ))}
-        
-    </div>}
-
-    
-
-  const messageInputChange=(e)=>{
-    const message=e.target.value
-    setInputMessage(prevMessages => [...prevMessages, message])
-    
-  }
-
-  return (
-    <div className={styles.chatContainer}>
-      <h2 className={styles.roomTitle}>{currentChatRoomName || 'Select a chat room'}</h2>
-      <MessageList/>
-      <div className={styles.messageInputWrapper}>
-        <input
-          type="text"
-          value={inputMessage}
-          onChange={messageInputChange}
-          className={styles.messageInput}
-          placeholder="Type a message..."
-        />
-        <button onClick={handleSendMessage} className={styles.sendButton}>Send</button>
       </div>
+      {currentChatRoomName !== '' && (
+        <div className={styles.messageInputWrapper}>
+          <input
+            type="text"
+            ref={inputMessageRef} // Attach the ref to the input field
+            onFocus={() => emitTypingStatus(true)}
+            onBlur={() => emitTypingStatus(false)}
+            className={styles.messageInput}
+            placeholder="Type a message..."
+          />
+          <button onClick={handleSendMessage} className={styles.sendButton}>
+            Send
+          </button>
+        </div>
+      )}
     </div>
-  )
-}
+  );
+};
 
-export default ChatWindow
+export default ChatWindow;

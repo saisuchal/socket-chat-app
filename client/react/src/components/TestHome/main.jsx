@@ -160,7 +160,15 @@ class TestHome extends Component{
           <div className={styles.chatBody}>
             <aside className={styles.chatSidebar}>
               <section className={styles.usersSection}>
-                <h2>Users</h2>
+                <h2>Contacts</h2>
+                <ul className={styles.userList}>
+                  {users.map(user => (
+                    <li key={user.id} id={user.id} onClick={this.createGetPrivateRoom}>
+                      {user.name}
+                    </li>
+                  ))}
+                </ul>
+                <h2>Online Users</h2>
                 <ul className={styles.userList}>
                   {users.map(user => (
                     <li key={user.id} id={user.id} onClick={this.createGetPrivateRoom}>
